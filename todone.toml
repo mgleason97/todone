@@ -1,0 +1,15 @@
+# Repositories to scan for TODO comments.
+[[repos]]
+name = "sample-script"
+path = "./sample"
+
+# Messaging app configuration.
+# MVP uses mocked Teams data; provide the people whose chats should be scanned.
+[messaging]
+app = "teams"
+
+[[messaging.contacts]]
+name = "Boss"
+
+[[messaging.contacts]]
+name = "Coworker"

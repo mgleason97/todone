@@ -18,15 +18,20 @@ Places where TODOne will look for todos. The idea is the user doesn't _have_ to 
 ## TODO Processing
 Once all todos are aggregated, agent processes items by assigning a priority and an estimated effort (in minutes)
 
+## Scheduling
+Agent strategizes how best to spend the given amount of time working on the processed items. Agent proposes schedule to user, at which point user can suggest edits. 
 
 ## MVP
 
 Will focus on core agent functionality and user customization.
 
-### Sources
 Cut work tracking integration, support local code repo, support a mocked messaging app.
 
 For messaging app, user should be able to provide the name of people they want TODOne to aggregate tasks from. Getting a chat history will be a tool call and the service will just be mocked to provide sample chat data.
+
+Cut ability for user to give feedback on agent's proposed schedule. 
+
+For processing, might be worth checking if LLM can just do that for us in a single completion. It will be better for finished product to have separate prioritization/estimation tools for eval and less churn, but might be able to lean on LLM to take of that for MVP.
 
 
 ### Work Tracking
@@ -35,5 +40,6 @@ For messaging app, user should be able to provide the name of people they want T
 - Agent can use tool calling to get "Boss" msg history
 - Agent can extract a todo from Boss's chat and report it to user
 - Add sample project that has some TODO comment
-- Agent can identify both Boss's TODO and code TODO and prioritize them
+- Agent can identify both Boss's TODO and code TODO
+- Agent can provide priority and estimation for items
 - Agent can say "I will schedule x hrs on <day> to review the following: <list of TODOs>"
