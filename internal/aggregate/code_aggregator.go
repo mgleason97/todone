@@ -11,23 +11,6 @@ import (
 	"todone/internal"
 )
 
-// Result groups all aggregated TODOs from any source.
-type Result struct {
-	TODOs []internal.TODO
-}
-
-// Aggregate gathers TODOs from all configured sources.
-func Aggregate(cfg internal.Config) (Result, error) {
-	codeItems, err := aggregateCodeTODOs(cfg.Repos)
-	if err != nil {
-		return Result{}, err
-	}
-
-	return Result{
-		TODOs: codeItems,
-	}, nil
-}
-
 func aggregateCodeTODOs(repos []internal.Repo) ([]internal.TODO, error) {
 	var todos []internal.TODO
 	for _, repo := range repos {
