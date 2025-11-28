@@ -1,18 +1,22 @@
 package main
 
 import (
+	"context"
 	"flag"
-	"fmt"
 	"log"
+	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 
 	"todone/internal"
-	"todone/internal/aggregate"
+	"todone/internal/agent"
+	"todone/internal/client"
 )
 
 func main() {
 	configPath := flag.String("config", "todone.toml", "Path to TODOne configuration TOML file.")
+	question := flag.String("question", "", "Optional question to ask the agent about your TODOs.")
 	flag.Parse()
 
 	cfg, err := loadConfig(*configPath)
@@ -20,19 +24,30 @@ func main() {
 		log.Fatalf("failed to load config from %s: %v", *configPath, err)
 	}
 
-	result, err := aggregate.Aggregate(cfg)
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	if strings.TrimSpace(*question) == "" {
+		return
+	}
+
+	userPipe := make(chan string)
+	agent, err := agent.New(client.NewOpenAIClient(), userPipe, cfg)
 	if err != nil {
-		log.Fatalf("failed to aggregate TODOs: %v", err)
+		log.Fatalf("failed to init agent: %v", err)
 	}
 
-	fmt.Printf("TODOne aggregated %d TODOs across %d repos (messaging app=%s)\n",
-		len(result.TODOs), len(cfg.Repos), cfg.Messaging.App)
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- agent.Run(ctx)
+	}()
 
-	for _, t := range result.TODOs {
-		fmt.Printf("\t- %s", t.Title)
+	userPipe <- *question
+	close(userPipe)
+
+	if err := <-errCh; err != nil {
+		log.Fatalf("agent failed: %v", err)
 	}
-
-	fmt.Println()
 }
 
 func loadConfig(path string) (internal.Config, error) {
