@@ -1,6 +1,6 @@
 # Repositories to scan for TODO comments.
 [[repos]]
-name = "sample-script"
+name = "sample-server"
 path = "./sample"
 
 # Messaging app configuration.
