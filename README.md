@@ -1,6 +1,10 @@
 # TODOne
-Find the time to make your TODOs TODOne
+Find the time to get your TODOs TODOne
 
-Tell TODOne when you want to schedule a session and it will aggregate, prioritize, and book time for you to get sh*t TODOne.
+## Requirements
+* [Go](https://go.dev/doc/install)
+* [`ripgrep`](https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation)
+* exported OPENAI_API_KEY (e.g. `export OPENAI_API_KEY=<key>`)
 
-## 
+## Usage
+`go run ./cmd/todone -config todone.toml -question "I want to schedule an hour of focused work. What should I work on?"`
