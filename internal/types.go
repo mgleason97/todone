@@ -35,6 +35,11 @@ const (
 	SourceTypeMessage SourceType = "message"
 )
 
+type RawTask struct {
+	Source       SourceType `json:"source"`
+	TaskMetadata any        `json:"metadata"`
+}
+
 type Task struct {
 	Source        SourceType
 	Title         string

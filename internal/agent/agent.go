@@ -3,11 +3,11 @@ package agent
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"strings"
 	"todone/internal"
 	"todone/internal/aggregate"
 	"todone/internal/client"
+	"todone/internal/util"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/packages/param"
@@ -25,10 +25,7 @@ type Agent struct {
 }
 
 func New(client *client.OpenAIClient, userIn <-chan string, agentOut chan<- string, cfg internal.Config) (Agent, error) {
-	prompt, err := loadSystemPrompt()
-	if err != nil {
-		return Agent{}, err
-	}
+	prompt := util.MustReadFile("internal/agent/prompt.md")
 	return Agent{
 		client:       client,
 		userIn:       userIn,
@@ -111,14 +108,6 @@ func assistantMessage(msg string) responses.ResponseInputItemUnionParam {
 	}
 }
 
-func loadSystemPrompt() (string, error) {
-	data, err := os.ReadFile("internal/agent/prompt.md")
-	if err != nil {
-		return "", err
-	}
-	return strings.TrimSpace(string(data)), nil
-}
-
 func (a *Agent) tools() []openai.FunctionDefinitionParam {
 	return []openai.FunctionDefinitionParam{
 		{
@@ -134,7 +123,7 @@ func (a *Agent) handleToolCalls(calls []responses.ResponseFunctionToolCall) erro
 
 		switch call.Name {
 		case "aggregate_todos":
-			todos, err := aggregate.Aggregate(a.cfg)
+			todos, err := aggregate.Aggregate(a.client, a.cfg)
 			if err != nil {
 				return err
 			}

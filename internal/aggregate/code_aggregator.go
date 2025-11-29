@@ -4,14 +4,29 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log"
 	"os/exec"
 	"strconv"
 	"strings"
 
 	"todone/internal"
+	"todone/internal/client"
 )
 
-type codeAggregator struct{}
+type codeAggregator struct {
+	oai    *client.OpenAIClient
+	cfg    internal.Config
+	prompt string
+}
+
+func newCodeAggregator(oai *client.OpenAIClient, cfg internal.Config) *codeAggregator {
+	prompt := enrichmentPrompt("internal/aggregate/code_enrichment.md")
+	return &codeAggregator{
+		oai:    oai,
+		cfg:    cfg,
+		prompt: prompt,
+	}
+}
 
 // CodeTODO represents a TODO found in code with surrounding context.
 type CodeTODO struct {
@@ -26,48 +41,47 @@ type codeRawResult struct {
 	TODOs []CodeTODO
 }
 
-func (codeAggregator) Extract(cfg internal.Config) (RawResult, error) {
-	raw, err := findRawCodeTODOs(cfg.Repos)
-	if err != nil {
-		return nil, err
-	}
-	return codeRawResult{TODOs: raw}, nil
-}
-
-func (codeAggregator) Enrich(raw RawResult) ([]internal.TODO, error) {
-	codeRaw, ok := raw.(codeRawResult)
-	if !ok {
-		return nil, fmt.Errorf("unexpected raw result type for code aggregator: %T", raw)
-	}
-	return enrichCodeTODOs(codeRaw.TODOs)
-}
-
-// findRawCodeTODOs returns raw code TODOs (with context) from all repos.
-func findRawCodeTODOs(repos []internal.Repo) ([]CodeTODO, error) {
+func (agg *codeAggregator) Extract() (RawResult, error) {
 	var codeTODOs []CodeTODO
-	for _, repo := range repos {
+	for _, repo := range agg.cfg.Repos {
 		repoCode, err := findRepoTODOs(repo)
 		if err != nil {
 			return nil, err
 		}
 		codeTODOs = append(codeTODOs, repoCode...)
 	}
-	return codeTODOs, nil
+	return codeRawResult{TODOs: codeTODOs}, nil
 }
 
-// enrichCodeTODOs converts raw code TODOs into uniform TODOs.
-// This is where an LLM-based enrichment pass can add title/description/effort/priority.
-func enrichCodeTODOs(raw []CodeTODO) ([]internal.TODO, error) {
-	todos := make([]internal.TODO, 0, len(raw))
-	for _, item := range raw {
-		todos = append(todos, internal.TODO{
-			Title:         item.TodoLine,
-			Description:   fmt.Sprintf("Found in %s:%s:%d", item.RepoName, item.File, item.LineNumber),
-			EffortMinutes: 0,
-			Priority:      1,
-		})
+func (agg *codeAggregator) Enrich(raw RawResult) ([]internal.TODO, error) {
+	codeRaw, ok := raw.(codeRawResult)
+	if !ok {
+		return nil, fmt.Errorf("unexpected raw result type for code aggregator: %T", raw)
 	}
-	return todos, nil
+
+	var uniformTasks []internal.TODO
+	var errGroup error
+	for _, t := range codeRaw.TODOs {
+		task, err := agg.enrichCodeTask(t)
+		if err != nil {
+			log.Printf("Unable to enrich code task: %v", err)
+			errGroup = errors.Join(errGroup, err)
+			continue
+		}
+		uniformTasks = append(uniformTasks, task)
+	}
+
+	return uniformTasks, errGroup
+}
+
+func (agg *codeAggregator) enrichCodeTask(task CodeTODO) (internal.TODO, error) {
+	// make a call to openai using structured outputs to get an internal TODO from the provided task
+	return internal.TODO{
+		Title:         task.TodoLine,
+		Description:   fmt.Sprintf("Found in %s:%s:%d", task.RepoName, task.File, task.LineNumber),
+		EffortMinutes: 0,
+		Priority:      1,
+	}, nil
 }
 
 func findRepoTODOs(repo internal.Repo) ([]CodeTODO, error) {
