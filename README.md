@@ -7,7 +7,7 @@ Currently, only code-based tasks are supported. See [#configuration] for configu
 
 ## Requirements
 * [Go](https://go.dev/doc/install)
-* [`ripgrep`](https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation)
+* [ripgrep](https://github.com/BurntSushi/ripgrep?tab=readme-ov-file#installation)
 * exported OPENAI_API_KEY (e.g. `export OPENAI_API_KEY=<key>`)
 
 ## Configuration
@@ -16,8 +16,12 @@ Currently, only code-based tasks are supported. See [#configuration] for configu
 
 
 ## Usage
-`git clone https://github.com/mgleason97/todone.git && cd todone`
-`go run ./cmd/todone -config todone.toml`
+```bash
+git clone https://github.com/mgleason97/todone.git
+cd todone
+go run ./cmd/todone -config todone.toml
+```
+
 This will start an interactive session where you can talk back and forth with your task planning agent.
 
 A sample repo is provided at `/sample`, so todone will be able to plan tasks for you to complete in this repo. 
