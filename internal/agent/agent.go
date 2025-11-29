@@ -49,7 +49,7 @@ func (a *Agent) Run(ctx context.Context) error {
 			if msg == "" {
 				continue
 			}
-			a.history = append(a.history, userMessage(msg))
+			a.history = append(a.history, client.UserMessage(msg))
 
 			ans, err := a.turn(ctx)
 			if err != nil {
@@ -74,37 +74,13 @@ func (a *Agent) turn(ctx context.Context) (string, error) {
 
 		// No tool calls requested means agent is done with its turn
 		if len(res.ToolCalls) == 0 {
-			a.history = append(a.history, assistantMessage(res.Answer))
+			a.history = append(a.history, client.AssistantMessage(res.Answer))
 			return res.Answer, nil
 		}
 
 		if err := a.handleToolCalls(res.ToolCalls); err != nil {
 			return "", err
 		}
-	}
-}
-
-func userMessage(msg string) responses.ResponseInputItemUnionParam {
-	return responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleUser,
-			Type: responses.EasyInputMessageTypeMessage,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt(msg),
-			},
-		},
-	}
-}
-
-func assistantMessage(msg string) responses.ResponseInputItemUnionParam {
-	return responses.ResponseInputItemUnionParam{
-		OfMessage: &responses.EasyInputMessageParam{
-			Role: responses.EasyInputMessageRoleAssistant,
-			Type: responses.EasyInputMessageTypeMessage,
-			Content: responses.EasyInputMessageContentUnionParam{
-				OfString: param.NewOpt(msg),
-			},
-		},
 	}
 }
 

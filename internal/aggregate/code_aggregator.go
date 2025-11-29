@@ -2,16 +2,43 @@ package aggregate
 
 import (
 	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 
 	"todone/internal"
 	"todone/internal/client"
+
+	"github.com/openai/openai-go/packages/param"
+	"github.com/openai/openai-go/responses"
 )
+
+var schema = responses.ResponseTextConfigParam{
+	Format: responses.ResponseFormatTextConfigUnionParam{
+		OfJSONSchema: &responses.ResponseFormatTextJSONSchemaConfigParam{
+			Name:        "todo",
+			Description: param.NewOpt("Structured TODO output"),
+			Strict:      param.NewOpt(true),
+			Schema: map[string]any{
+				"type": "object",
+				"properties": map[string]any{
+					"title":         map[string]any{"type": "string"},
+					"description":   map[string]any{"type": "string"},
+					"effortMinutes": map[string]any{"type": "number"},
+					"priority":      map[string]any{"type": "number"},
+				},
+				"required":             []string{"title", "description", "effortMinutes", "priority"},
+				"additionalProperties": false,
+			},
+		},
+	},
+}
 
 type codeAggregator struct {
 	oai    *client.OpenAIClient
@@ -59,29 +86,58 @@ func (agg *codeAggregator) Enrich(raw RawResult) ([]internal.TODO, error) {
 		return nil, fmt.Errorf("unexpected raw result type for code aggregator: %T", raw)
 	}
 
-	var uniformTasks []internal.TODO
-	var errGroup error
+	var (
+		wg       sync.WaitGroup
+		mu       sync.Mutex
+		uniform  []internal.TODO
+		errGroup error
+	)
+
 	for _, t := range codeRaw.TODOs {
-		task, err := agg.enrichCodeTask(t)
-		if err != nil {
-			log.Printf("Unable to enrich code task: %v", err)
-			errGroup = errors.Join(errGroup, err)
-			continue
-		}
-		uniformTasks = append(uniformTasks, task)
+		wg.Add(1)
+		task := t
+		go func() {
+			defer wg.Done()
+			enriched, err := agg.enrichCodeTask(task)
+			if err != nil {
+				log.Printf("Unable to enrich code task: %v", err)
+				mu.Lock()
+				errGroup = errors.Join(errGroup, err)
+				mu.Unlock()
+				return
+			}
+			mu.Lock()
+			uniform = append(uniform, enriched)
+			mu.Unlock()
+		}()
 	}
 
-	return uniformTasks, errGroup
+	wg.Wait()
+	return uniform, errGroup
 }
 
 func (agg *codeAggregator) enrichCodeTask(task CodeTODO) (internal.TODO, error) {
-	// make a call to openai using structured outputs to get an internal TODO from the provided task
-	return internal.TODO{
-		Title:         task.TodoLine,
-		Description:   fmt.Sprintf("Found in %s:%s:%d", task.RepoName, task.File, task.LineNumber),
-		EffortMinutes: 0,
-		Priority:      1,
-	}, nil
+	prompt := agg.prompt
+	msg := renderCodeTask(task)
+
+	req := client.GetResponseInput{
+		SystemPrompt: prompt,
+		History: []responses.ResponseInputItemUnionParam{
+			client.UserMessage(msg),
+		},
+		ResponseFormat: schema,
+	}
+
+	res, err := agg.oai.GetResponse(context.Background(), &req)
+	if err != nil {
+		return internal.TODO{}, err
+	}
+
+	var enriched internal.TODO
+	if err := json.Unmarshal([]byte(res.Answer), &enriched); err != nil {
+		return internal.TODO{}, fmt.Errorf("failed to parse enrichment response: %w", err)
+	}
+	return enriched, nil
 }
 
 func findRepoTODOs(repo internal.Repo) ([]CodeTODO, error) {
@@ -189,4 +245,16 @@ func splitLine(line string) (file string, lineNum int, text string, isMatch bool
 	}
 
 	return "", 0, "", false, errors.New("unexpected ripgrep output: " + line)
+}
+
+func renderCodeTask(task CodeTODO) string {
+	var sb strings.Builder
+	sb.WriteString("Code TODO found:\n")
+	sb.WriteString(fmt.Sprintf("Repo: %s\nFile: %s\nLine: %d\nMatch: %s\n", task.RepoName, task.File, task.LineNumber, task.TodoLine))
+	sb.WriteString("Context:\n")
+	for _, line := range task.ContextLines {
+		sb.WriteString(line)
+		sb.WriteRune('\n')
+	}
+	return sb.String()
 }

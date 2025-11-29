@@ -39,7 +39,7 @@ func main() {
 		log.Fatalf("server error: %v", err)
 	}
 
-	// TODO: implement graceful shutdown when receiving SIGINT/SIGTERM.
+	// TODO: implement graceful shutdown when receiving SIGINT/SIGTERM before production launch
 }
 
 func loggingMiddleware(next http.Handler) http.Handler {

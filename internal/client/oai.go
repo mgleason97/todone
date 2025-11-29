@@ -31,9 +31,10 @@ func NewOpenAIClient() *OpenAIClient {
 }
 
 type GetResponseInput struct {
-	SystemPrompt string                                  `json:"system_prompt"`
-	History      []responses.ResponseInputItemUnionParam `json:"history"`
-	Tools        []openai.FunctionDefinitionParam        `json:"tools"`
+	SystemPrompt   string                                  `json:"system_prompt"`
+	History        []responses.ResponseInputItemUnionParam `json:"history"`
+	Tools          []openai.FunctionDefinitionParam        `json:"tools"`
+	ResponseFormat responses.ResponseTextConfigParam       `json:"response_format"`
 }
 
 type GetResponseOutput struct {
@@ -49,6 +50,7 @@ func (o *OpenAIClient) GetResponse(ctx context.Context, req *GetResponseInput) (
 			OfInputItemList: req.History,
 		},
 		Tools: toToolParams(req.Tools),
+		Text:  req.ResponseFormat,
 	}
 
 	res, err := o.c.Responses.New(ctx, params)
@@ -91,4 +93,28 @@ func toToolParams(tools []openai.FunctionDefinitionParam) []responses.ToolUnionP
 		})
 	}
 	return params
+}
+
+func UserMessage(msg string) responses.ResponseInputItemUnionParam {
+	return responses.ResponseInputItemUnionParam{
+		OfMessage: &responses.EasyInputMessageParam{
+			Role: responses.EasyInputMessageRoleUser,
+			Type: responses.EasyInputMessageTypeMessage,
+			Content: responses.EasyInputMessageContentUnionParam{
+				OfString: param.NewOpt(msg),
+			},
+		},
+	}
+}
+
+func AssistantMessage(msg string) responses.ResponseInputItemUnionParam {
+	return responses.ResponseInputItemUnionParam{
+		OfMessage: &responses.EasyInputMessageParam{
+			Role: responses.EasyInputMessageRoleAssistant,
+			Type: responses.EasyInputMessageTypeMessage,
+			Content: responses.EasyInputMessageContentUnionParam{
+				OfString: param.NewOpt(msg),
+			},
+		},
+	}
 }
