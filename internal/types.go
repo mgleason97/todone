@@ -27,23 +27,3 @@ type TODO struct {
 	EffortMinutes int
 	Priority      int
 }
-
-type SourceType string
-
-const (
-	SourceTypeCode    SourceType = "code"
-	SourceTypeMessage SourceType = "message"
-)
-
-type RawTask struct {
-	Source       SourceType `json:"source"`
-	TaskMetadata any        `json:"metadata"`
-}
-
-type Task struct {
-	Source        SourceType
-	Title         string
-	Description   string
-	EffortMinutes int
-	Priority      int
-}

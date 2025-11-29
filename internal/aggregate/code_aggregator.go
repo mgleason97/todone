@@ -40,6 +40,7 @@ var schema = responses.ResponseTextConfigParam{
 	},
 }
 
+// codeAggregator implements the SourceAggregator interface to extract TODOs from codebases
 type codeAggregator struct {
 	oai    *client.OpenAIClient
 	cfg    internal.Config
@@ -93,6 +94,7 @@ func (agg *codeAggregator) Enrich(raw RawResult) ([]internal.TODO, error) {
 		errGroup error
 	)
 
+	// spawn goroutine for each enrichment
 	for _, t := range codeRaw.TODOs {
 		wg.Add(1)
 		task := t
@@ -116,6 +118,7 @@ func (agg *codeAggregator) Enrich(raw RawResult) ([]internal.TODO, error) {
 	return uniform, errGroup
 }
 
+// enrichCodeTask uses an llm to make an internal.TODO from a CodeTODO
 func (agg *codeAggregator) enrichCodeTask(task CodeTODO) (internal.TODO, error) {
 	prompt := agg.prompt
 	msg := renderCodeTask(task)
