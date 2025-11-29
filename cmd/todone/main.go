@@ -58,7 +58,7 @@ func listen(ctx context.Context, userIn chan<- string) {
 		defer close(userIn)
 
 		scanner := bufio.NewScanner(os.Stdin)
-		fmt.Fprint(os.Stdout, "> ")
+		fmt.Fprint(os.Stdout, "user>\t")
 		for scanner.Scan() {
 			line := scanner.Text()
 			if strings.TrimSpace(strings.ToLower(line)) == "exit" {
@@ -84,8 +84,8 @@ func waitForAgent(ctx context.Context, agentOut <-chan string, errCh <-chan erro
 			if !ok {
 				continue
 			}
-			fmt.Fprintf(os.Stdout, "agent> %s\n", msg)
-			fmt.Fprint(os.Stdout, "> ")
+			fmt.Fprintf(os.Stdout, "agent>\t%s\n", msg)
+			fmt.Fprint(os.Stdout, "user>\t")
 
 		case err := <-errCh:
 			if err != nil {
