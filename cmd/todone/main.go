@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"flag"
+	"fmt"
 	"log"
-	"strings"
+	"os"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -16,7 +18,6 @@ import (
 
 func main() {
 	configPath := flag.String("config", "todone.toml", "Path to TODOne configuration TOML file.")
-	question := flag.String("question", "", "Optional question to ask the agent about your TODOs.")
 	flag.Parse()
 
 	cfg, err := loadConfig(*configPath)
@@ -27,26 +28,54 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
-	if strings.TrimSpace(*question) == "" {
-		return
-	}
-
-	userPipe := make(chan string)
-	agent, err := agent.New(client.NewOpenAIClient(), userPipe, cfg)
+	userIn := make(chan string)
+	agentOut := make(chan string)
+	ag, err := agent.New(client.NewOpenAIClient(), userIn, agentOut, cfg)
 	if err != nil {
 		log.Fatalf("failed to init agent: %v", err)
 	}
 
 	errCh := make(chan error, 1)
 	go func() {
-		errCh <- agent.Run(ctx)
+		defer close(agentOut)
+		errCh <- ag.Run(ctx)
 	}()
 
-	userPipe <- *question
-	close(userPipe)
+	go func() {
+		defer close(userIn)
 
-	if err := <-errCh; err != nil {
-		log.Fatalf("agent failed: %v", err)
+		scanner := bufio.NewScanner(os.Stdin)
+		for scanner.Scan() {
+			line := scanner.Text()
+
+			select {
+			case <-ctx.Done():
+				return
+			case userIn <- line:
+			}
+		}
+
+	}()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+
+		case msg, ok := <-agentOut:
+			if !ok {
+				// Agent finished; wait for error (if any)
+				continue
+			}
+
+			fmt.Fprintf(os.Stdout, "agent> %s\n", msg)
+
+		case err := <-errCh:
+			if err != nil {
+				log.Fatalf("agent failed: %v", err)
+			}
+			return
+		}
 	}
 }
 

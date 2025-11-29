@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"strings"
 	"todone/internal"
@@ -17,21 +16,23 @@ import (
 
 type Agent struct {
 	client       *client.OpenAIClient
-	userPipe     <-chan string
+	userIn       <-chan string
+	agentOut     chan<- string
 	history      []responses.ResponseInputItemUnionParam
 	systemPrompt string
 	todos        []internal.TODO
 	cfg          internal.Config
 }
 
-func New(client *client.OpenAIClient, pipe <-chan string, cfg internal.Config) (Agent, error) {
+func New(client *client.OpenAIClient, userIn <-chan string, agentOut chan<- string, cfg internal.Config) (Agent, error) {
 	prompt, err := loadSystemPrompt()
 	if err != nil {
 		return Agent{}, err
 	}
 	return Agent{
 		client:       client,
-		userPipe:     pipe,
+		userIn:       userIn,
+		agentOut:     agentOut,
 		history:      []responses.ResponseInputItemUnionParam{},
 		systemPrompt: prompt,
 		cfg:          cfg,
@@ -43,22 +44,26 @@ func (a *Agent) Run(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case msg, ok := <-a.userPipe:
+		case msg, ok := <-a.userIn:
 			if !ok {
 				return nil
 			}
-			if strings.TrimSpace(msg) == "" {
+			msg = strings.TrimSpace(msg)
+			if msg == "" {
 				continue
 			}
 			a.history = append(a.history, userMessage(msg))
-			if err := a.turn(ctx); err != nil {
+
+			ans, err := a.turn(ctx)
+			if err != nil {
 				return err
 			}
+			a.agentOut <- ans
 		}
 	}
 }
 
-func (a *Agent) turn(ctx context.Context) error {
+func (a *Agent) turn(ctx context.Context) (string, error) {
 	for {
 		req := client.GetResponseInput{
 			SystemPrompt: a.systemPrompt,
@@ -67,18 +72,17 @@ func (a *Agent) turn(ctx context.Context) error {
 		}
 		res, err := a.client.GetResponse(ctx, &req)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		// No tool calls requested means agent is done with its turn
 		if len(res.ToolCalls) == 0 {
 			a.history = append(a.history, assistantMessage(res.Answer))
-			fmt.Printf("Agent: %s\n", res.Answer)
-			return nil
+			return res.Answer, nil
 		}
 
 		if err := a.handleToolCalls(res.ToolCalls); err != nil {
-			return err
+			return "", err
 		}
 	}
 }
