@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -40,23 +41,41 @@ func main() {
 		defer close(agentOut)
 		errCh <- ag.Run(ctx)
 	}()
+	listen(ctx, userIn)
 
+	waitForAgent(ctx, agentOut, errCh)
+}
+
+func loadConfig(path string) (internal.Config, error) {
+	var cfg internal.Config
+	_, err := toml.DecodeFile(path, &cfg)
+	return cfg, err
+}
+
+func listen(ctx context.Context, userIn chan<- string) {
 	go func() {
 		defer close(userIn)
 
 		scanner := bufio.NewScanner(os.Stdin)
+		fmt.Fprint(os.Stdout, "> ")
 		for scanner.Scan() {
 			line := scanner.Text()
+			if strings.TrimSpace(strings.ToLower(line)) == "exit" {
+				return
+			}
 
 			select {
 			case <-ctx.Done():
 				return
 			case userIn <- line:
 			}
+
+			fmt.Fprint(os.Stdout, "> ")
 		}
-
 	}()
+}
 
+func waitForAgent(ctx context.Context, agentOut <-chan string, errCh <-chan error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -64,11 +83,10 @@ func main() {
 
 		case msg, ok := <-agentOut:
 			if !ok {
-				// Agent finished; wait for error (if any)
 				continue
 			}
-
 			fmt.Fprintf(os.Stdout, "agent> %s\n", msg)
+			fmt.Fprint(os.Stdout, "> ")
 
 		case err := <-errCh:
 			if err != nil {
@@ -77,10 +95,4 @@ func main() {
 			return
 		}
 	}
-}
-
-func loadConfig(path string) (internal.Config, error) {
-	var cfg internal.Config
-	_, err := toml.DecodeFile(path, &cfg)
-	return cfg, err
 }
