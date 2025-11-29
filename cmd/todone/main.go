@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
-	"time"
+	"syscall"
 
 	"github.com/BurntSushi/toml"
 
@@ -26,7 +27,7 @@ func main() {
 		log.Fatalf("failed to load config from %s: %v", *configPath, err)
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer cancel()
 
 	userIn := make(chan string)
