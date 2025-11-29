@@ -4,7 +4,6 @@ package aggregate
 import (
 	"todone/internal"
 	"todone/internal/client"
-	"todone/internal/util"
 )
 
 // RawResult is a marker interface for source-specific raw TODO collections.
@@ -39,11 +38,4 @@ func Aggregate(oai *client.OpenAIClient, cfg internal.Config) ([]internal.TODO, 
 	}
 
 	return todos, nil
-}
-
-func enrichmentPrompt(path string) string {
-	taskDesc := util.MustReadFile("internal/aggregate/task_desc.md")
-	aggPrompt := util.MustReadFile(path)
-
-	return aggPrompt + "\n" + taskDesc
 }

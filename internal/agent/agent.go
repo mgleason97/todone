@@ -7,7 +7,7 @@ import (
 	"todone/internal"
 	"todone/internal/aggregate"
 	"todone/internal/client"
-	"todone/internal/util"
+	"todone/internal/prompt"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/packages/param"
@@ -25,7 +25,7 @@ type Agent struct {
 }
 
 func New(client *client.OpenAIClient, userIn <-chan string, agentOut chan<- string, cfg internal.Config) (Agent, error) {
-	prompt := util.MustReadFile("internal/agent/prompt.md")
+	prompt := prompt.EnrichPromptWithTask("internal/prompt/agent.md")
 	return Agent{
 		client:       client,
 		userIn:       userIn,

@@ -14,6 +14,7 @@ import (
 
 	"todone/internal"
 	"todone/internal/client"
+	"todone/internal/prompt"
 
 	"github.com/openai/openai-go/packages/param"
 	"github.com/openai/openai-go/responses"
@@ -48,7 +49,7 @@ type codeAggregator struct {
 }
 
 func newCodeAggregator(oai *client.OpenAIClient, cfg internal.Config) *codeAggregator {
-	prompt := enrichmentPrompt("internal/aggregate/code_enrichment.md")
+	prompt := prompt.EnrichPromptWithTask("internal/prompt/code_enrichment.md")
 	return &codeAggregator{
 		oai:    oai,
 		cfg:    cfg,
