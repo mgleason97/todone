@@ -69,8 +69,6 @@ func listen(ctx context.Context, userIn chan<- string) {
 				return
 			case userIn <- line:
 			}
-
-			fmt.Fprint(os.Stdout, "> ")
 		}
 	}()
 }
