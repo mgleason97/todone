@@ -22,3 +22,4 @@ This will start an interactive session where you can talk back and forth with yo
 
 A sample repo is provided at `/sample`, so todone will be able to plan tasks for you to complete in this repo. 
 
+![Sample todone usage](docs/images/todone_sample.png)
