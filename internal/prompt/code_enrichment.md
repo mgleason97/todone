@@ -14,3 +14,27 @@ E.g. if there is a "// TODO: remove deprecated code usage" comment in the `unico
 }
 ```
 
+It's possible the context contains more TODOs than just the matched TODO. The task that you generate should focus solely on the matched TODO. 
+
+E.g. for this code TODO:
+```txt
+Repo: sample-server
+File: ./sample/main.go
+Line: 52
+Match: // TODO: log request size and response status code.
+Context:
+func loggingMiddleware(next http.Handler) http.Handler {
+// TODO: replace stdlib log with structured logger (zap, slog, zerolog).
+return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+start := time.Now()
+
+next.ServeHTTP(w, r)
+
+// TODO: log request size and response status code.
+fmt.Printf("%s %s took %s\n", r.Method, r.URL.Path, time.Since(start))
+})
+}
+```
+
+a good Task would not mention replacing stdlib with structured logs since the match pertains to the TODO about logging request size and status code. 
+
