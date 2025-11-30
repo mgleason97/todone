@@ -3,7 +3,7 @@ Find the time to get your TODOs TODOne.
 
 TODOne is an agent that lives in your terminal and helps you fill free time with prioritized, time-bound todos. Tasks are aggregated from your environment so you don't have to lift all of your tasks into a todo app first. 
 
-Currently, only code-based tasks are supported. See [#configuration] for configuring TODOne.
+Currently, only code-based tasks are supported. See [configuration](#configuration) for configuring TODOne.
 
 ## Requirements
 * [Go](https://go.dev/doc/install)
@@ -13,6 +13,18 @@ Currently, only code-based tasks are supported. See [#configuration] for configu
 ## Configuration
 > [!NOTE] 
 > Configuration is a work in progress, config is only read from the `todone.toml` in the repo root.
+
+`todone` can be configured to read from different repos in your local file system.
+
+```toml
+[[repos]]
+name = "project" # user-friendly repo name
+path = "path/to/repo"
+
+[[repos]]
+name = "other-project"
+path = "path/to/other-project"
+```
 
 
 ## Usage
