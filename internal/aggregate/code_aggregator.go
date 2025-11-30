@@ -49,11 +49,10 @@ type codeAggregator struct {
 }
 
 func newCodeAggregator(oai *client.OpenAIClient, cfg internal.Config) *codeAggregator {
-	prompt := prompt.EnrichPromptWithTask("internal/prompt/code_enrichment.md")
 	return &codeAggregator{
 		oai:    oai,
 		cfg:    cfg,
-		prompt: prompt,
+		prompt: prompt.CodeEnrichmentPrompt,
 	}
 }
 

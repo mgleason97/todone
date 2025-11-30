@@ -1,12 +1,15 @@
 package prompt
 
-import "todone/internal/util"
+import _ "embed"
 
-// EnrichPromptWithTask loads a prompt at the given path and appends additional
-// information about a task
-func EnrichPromptWithTask(path string) string {
-	taskDesc := util.MustReadFile("internal/prompt/task_desc.md")
-	aggPrompt := util.MustReadFile(path)
+var (
+	//go:embed agent.md
+	agentPrompt string
+	//go:embed task_desc.md
+	taskDesc string
+	//go:embed code_enrichment.md
+	codeEnrichment string
+)
 
-	return aggPrompt + "\n" + taskDesc
-}
+var AgentPrompt = agentPrompt + "\n" + taskDesc
+var CodeEnrichmentPrompt = codeEnrichment + "\n" + taskDesc

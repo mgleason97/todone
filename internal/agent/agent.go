@@ -25,13 +25,12 @@ type Agent struct {
 }
 
 func New(client *client.OpenAIClient, userIn <-chan string, agentOut chan<- string, cfg internal.Config) (Agent, error) {
-	prompt := prompt.EnrichPromptWithTask("internal/prompt/agent.md")
 	return Agent{
 		client:       client,
 		userIn:       userIn,
 		agentOut:     agentOut,
 		history:      []responses.ResponseInputItemUnionParam{},
-		systemPrompt: prompt,
+		systemPrompt: prompt.AgentPrompt,
 		cfg:          cfg,
 	}, nil
 }
